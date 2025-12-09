@@ -2,6 +2,7 @@ import { Book } from './book';
 import { BookDevice } from './book-device';
 import { Genre } from './genre';
 import { PageStat } from './page-stat';
+import { Annotation } from './annotation';
 
 type Stats = {
   last_open: number;
@@ -19,6 +20,7 @@ type RelatedEntities = {
   stats: PageStat[];
   device_data: BookDevice[];
   genres: Genre[];
+  annotations: Annotation[];
 };
 
 export type BookWithData = Book & Stats & RelatedEntities;

@@ -7,6 +7,7 @@ local logger = require("logger")
 local UIManager = require("ui/uimanager")
 local const = require("const")
 local Device = require("device")
+local KoInsightMetadataReader = require("metadata_reader")
 
 local API_UPLOAD_LOCATION = "/api/plugin/import"
 local API_DEVICE_LOCATION = "/api/plugin/device"
@@ -48,7 +49,7 @@ function send_device_data(server_url, silent)
 end
 
 function send_statistics_data(server_url, silent)
-  local url = server_url .. API_UPLOAD_LOCATION
+  local url = server_url .. API_UPLOAD_LOCATION .. "/statistics"
 
   local body = {
     stats = KoInsightDbReader.progressData(),
@@ -62,9 +63,35 @@ function send_statistics_data(server_url, silent)
 
   if not silent then
     if ok then
-      render_response_message(response, "Success:", "Data uploaded.")
+      render_response_message(response, "Success:", "Statistics Data uploaded.")
     else
-      render_response_message(response, "Error:", "Data upload failed.")
+      render_response_message(response, "Error:", "Statistics Data upload failed.")
+    end
+  end
+end
+
+function send_annotations_data(server_url, silent)
+  local url = server_url .. API_UPLOAD_LOCATION .. "/annotations"
+
+  local body = {
+    annotations = KoInsightMetadataReader.bookAnnotations(),
+    version = const.VERSION,
+  }
+
+  if #body.annotations == 0 then
+    logger.dbg("[KoInsight] No annotations to upload.")
+    return
+  end
+
+  body = JSON.encode(body)
+
+  local ok, response = callApi("POST", url, get_headers(body), body)
+
+  if not silent then
+    if ok then
+      render_response_message(response, "Success:", "Annotations Data uploaded.")
+    else
+      render_response_message(response, "Error:", "Annotations Data upload failed.")
     end
   end
 end

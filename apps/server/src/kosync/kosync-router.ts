@@ -21,6 +21,11 @@ const router = Router();
  * "expected_status" : [201, 402]
  */
 router.post('/users/create', async (req: Request, res: Response) => {
+  if (process.env.DISABLE_REGISTRATION === 'true') {
+    res.status(403).json({ error: 'User registration is disabled' });
+    return;
+  }
+
   const { username, password } = req.body;
 
   if (!username || !password) {
@@ -54,7 +59,7 @@ router.get('/users/auth', async (req: Request, res: Response) => {
   let user = null;
   try {
     user = await UserRepository.login(username, password);
-  } catch (error) {}
+  } catch (error) { }
 
   if (!user) {
     res.status(401).json({ error: 'Unauthorized' });
