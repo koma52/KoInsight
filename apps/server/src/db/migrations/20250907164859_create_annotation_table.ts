@@ -25,14 +25,14 @@ export async function up(knex: Knex): Promise<void> {
 
     // Columns from the KoReaderAnnotation type
     table.text('chapter').notNullable();
-    table.string('color').notNullable();
+    table.string('color');
     table.string('datetime').notNullable();
     table.string('datetime_updated'); // This one can be nullable
-    table.string('drawer').notNullable();
+    table.string('drawer');
     table.string('page').notNullable();
     table.integer('pageno').notNullable();
-    table.text('pos0').notNullable();
-    table.text('pos1').notNullable();
+    table.text('pos0');
+    table.text('pos1');
     table.text('text').notNullable();
     table.text('note'); // Notes can be nullable (for highlights without notes)
 

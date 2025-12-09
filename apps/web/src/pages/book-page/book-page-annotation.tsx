@@ -1,6 +1,6 @@
 import { BookWithData } from '@koinsight/common/types';
-import { Flex, TextInput, Blockquote, Card, Group, Text, Badge } from '@mantine/core';
-import { IconHash, IconAlignJustified, IconClock } from '@tabler/icons-react';
+import { Flex, TextInput, Blockquote, Card, Group, Text, Badge, ActionIcon } from '@mantine/core';
+import { IconHash, IconAlignJustified, IconClock, IconBookmark, IconTrash } from '@tabler/icons-react';
 import { JSX, useState } from 'react';
 
 type BookPageAnnotationProps = {
@@ -30,7 +30,11 @@ export function BookPageAnnotation({ book }: BookPageAnnotationProps): JSX.Eleme
           <Card key={annotation.pos0 + annotation.pos1}>
             <Group gap={13} align="center">
               <Group gap={3}>
-                <IconAlignJustified size={14} />
+                {annotation.color === null ? (
+                  <IconBookmark size={14} />
+                ) : (
+                  <IconAlignJustified size={14} />
+                )}
                 <Text size="sm">{annotation.chapter}</Text>
               </Group>
               <Group gap={3}>
@@ -44,7 +48,19 @@ export function BookPageAnnotation({ book }: BookPageAnnotationProps): JSX.Eleme
                 </Text>
               </Group>
             </Group>
-            <Blockquote p="md">{annotation.text}</Blockquote>
+            {annotation.color === null ? (
+              <Blockquote p="md">Bookmark</Blockquote>
+            ) : (
+              <Blockquote p="md" color={annotation.color}>
+                <Flex justify="space-between" align="flex-start">
+                  <Text>{annotation.text}</Text>
+
+                  <ActionIcon variant="light" color="red">
+                    <IconTrash size={20} />
+                  </ActionIcon>
+                </Flex>
+              </Blockquote>
+            )}
             {annotation.note && (
               <Group ml="sm" align="baseline">
                 <Badge>Note: </Badge>
