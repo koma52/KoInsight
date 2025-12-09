@@ -4,6 +4,7 @@ import { GenreRepository } from '../genres/genre-repository';
 import { StatsRepository } from '../stats/stats-repository';
 import { normalizeRanges, Range, totalRangeLength } from '../utils/ranges';
 import { BooksRepository } from './books-repository';
+import { AnnotationsRepository } from '../annotations/annotations-repository';
 
 export class BooksService {
   static getTotalPages(book: Book, bookDevices: BookDevice[]): number {
@@ -66,6 +67,7 @@ export class BooksService {
   }
 
   static async withData(book: Book): Promise<BookWithData> {
+    const annotations = await AnnotationsRepository.getByBookMD5(book.md5);
     const stats = await StatsRepository.getByBookMD5(book.md5);
     const bookDevices = await BooksRepository.getBookDevices(book.md5);
     const genres = await GenreRepository.getByBookMd5(book.md5);
@@ -92,6 +94,7 @@ export class BooksService {
       genres,
       notes: bookDevices.reduce((acc, device) => acc + device.notes, 0),
       highlights: bookDevices.reduce((acc, device) => acc + device.highlights, 0),
+      annotations,
     };
 
     return response;

@@ -49,14 +49,104 @@ function koinsight:addToMainMenu(menu_items)
         end,
       },
       {
+        text = _("Synchronize Annotations"),
+        separator = true,
+        callback = function()
+          local server_url = self.koinsight_settings.server_url
+          local API_UPLOAD_LOCATION = "/api/plugin/import"
+          local url = server_url .. API_UPLOAD_LOCATION .. "/annotations"
+
+          local JSON = require("json")
+          local callApi = require("call_api")
+          local lfs = require("libs/libkoreader-lfs")
+          local const = require("const")
+          local books = {}
+          local device_id = G_reader_settings:readSetting("device_id")
+          local function get_annotations(dir)
+            for file in lfs.dir(dir) do
+              if file == "." or file == ".." then
+                goto continue
+              end
+              local f = dir .. '/' .. file
+              local attr = lfs.attributes(f)
+              if attr then
+                if attr.mode == "directory" then
+                  get_annotations(f)
+                else
+                  if file:match("%.lua$") then
+                    local success, metadata = pcall(dofile, f)
+                    if success then
+                      if metadata.partial_md5_checksum and
+                          metadata.annotations and #metadata.annotations > 0 then
+                        for _, annotation in ipairs(metadata.annotations) do
+                          local book = {
+                            chapter = annotation.chapter,
+                            color = annotation.color,
+                            datetime = annotation.datetime,
+                            datetime_updated = annotation.datetime_updated or
+                                "",
+                            drawer = annotation.drawer,
+                            page = annotation.page,
+                            pageno = annotation.pageno,
+                            pos0 = annotation.pos0,
+                            pos1 = annotation.pos1,
+                            text = annotation.text,
+                            note = annotation.note or "",
+                            book_md5 = metadata.partial_md5_checksum,
+                            device_id = device_id
+                          }
+                          table.insert(books, book)
+                        end
+                      else
+                        logger.warn(
+                          "[KoInsight] No annotations or md5 found in " .. f)
+                      end
+                    else
+                      logger.warn("[KoInsight] Failed to load metadata from " .. f)
+                    end
+                  end
+                end
+              end
+              ::continue::
+            end
+          end
+          local DocSettings = require("frontend/docsettings")
+          local metadata_location = DocSettings:getSidecarDir(self.document.file)
+          logger.info("[KoInsight] " .. metadata_location)
+          get_annotations(metadata_location)
+          logger.info("[KoInsight] Found " .. tostring(#books) .. " annotations to upload.")
+          local body = {
+            annotations = books,
+            version = const.VERSION,
+          }
+
+          if #body.annotations == 0 then
+            logger.dbg("[KoInsight] No annotations to upload.")
+            return
+          end
+
+          body = JSON.encode(body)
+
+          logger.dbg("[KoInsight] Uploading annotations: ", body)
+
+          local ok, response = callApi("POST", url, get_headers(body), body)
+
+          if ok then
+            render_response_message(response, "Success:", "Annotations Data uploaded.")
+          else
+            render_response_message(response, "Error:", "Annotations Data upload failed.")
+          end
+        end
+      },
+      {
         text = _("About KoInsight"),
         keep_menu_open = true,
         callback = function()
           local const = require("const")
           UIManager:show(InfoMessage:new({
             text = "KoInsight is a sync plugin for KoInsight instances.\n\nPlugin version: "
-              .. const.VERSION
-              .. "\n\nSee https://github.com/GeorgeSG/koinsight.",
+                .. const.VERSION
+                .. "\n\nSee https://github.com/GeorgeSG/koinsight.",
           }))
         end,
       },
@@ -76,6 +166,7 @@ end
 
 function koinsight:onKoInsightSync()
   onUpload(self.koinsight_settings.server_url)
+  send_annotations_data(self.koinsight_settings.server_url)
 end
 
 -- Sync when device suspends
@@ -84,7 +175,7 @@ function koinsight:onSuspend()
     logger.dbg("[KoInsight] Sync on suspend is disabled, skipping")
     return
   end
-  
+
   logger.info("[KoInsight] Device suspending - syncing data")
   self:performSyncOnSuspend()
 end
@@ -94,7 +185,7 @@ function koinsight:onClose()
   if not self:getSyncOnSuspendEnabled() then
     return
   end
-  
+
   logger.info("[KoInsight] System closing - syncing data")
   self:performSyncOnSuspend()
 end
@@ -103,7 +194,7 @@ function koinsight:onPowerOff()
   if not self:getSyncOnSuspendEnabled() then
     return
   end
-  
+
   logger.info("[KoInsight] Device powering off - syncing data")
   self:performSyncOnSuspend()
 end
@@ -112,7 +203,7 @@ function koinsight:onReboot()
   if not self:getSyncOnSuspendEnabled() then
     return
   end
-  
+
   logger.info("[KoInsight] Device rebooting - syncing data")
   self:performSyncOnSuspend()
 end
@@ -124,18 +215,18 @@ function koinsight:performSyncOnSuspend()
     logger.info("[KoInsight] No server URL configured, skipping sync on suspend")
     return
   end
-  
+
   -- Check WiFi connectivity before attempting sync
   if not self:isWiFiConnected() then
     logger.info("[KoInsight] WiFi not connected, skipping sync on suspend")
     return
   end
-  
+
   -- Perform sync in a protected call to avoid crashing on suspend
   local success, error_msg = pcall(function()
     onUpload(self.koinsight_settings.server_url, true) -- true = silent mode
   end)
-  
+
   if not success then
     message = "Error during auto sync: " .. tostring(error_msg)
     logger.err("[KoInsight] " .. message)
@@ -151,19 +242,19 @@ end
 function koinsight:isWiFiConnected()
   local success, result = pcall(function()
     local NetworkMgr = require("ui/network/manager")
-    
+
     -- NetworkMgr handles all the platform-specific logic for us
     -- isWifiOn() returns true on devices without WiFi toggle (like some tablets)
     -- isConnected() checks actual network connectivity
     return NetworkMgr:isWifiOn() and NetworkMgr:isConnected()
   end)
-  
+
   if not success then
     logger.err("[KoInsight] Error checking WiFi status:", result)
     -- If we can't check WiFi status, assume it's available
     return true
   end
-  
+
   logger.dbg("[KoInsight] WiFi status - On:", result and "true" or "false")
   return result
 end
@@ -177,49 +268,49 @@ function koinsight:getSyncOnSuspendEnabled()
       logger.dbg("[KoInsight] No settings object found")
       return true -- default
     end
-    
+
     local koinsight_data = settings:readSetting("koinsight", {})
     if koinsight_data.sync_on_suspend == nil then
       logger.dbg("[KoInsight] sync_on_suspend not set, defaulting to true")
       return true
     end
-    
+
     logger.dbg("[KoInsight] sync_on_suspend current value:", koinsight_data.sync_on_suspend)
     return koinsight_data.sync_on_suspend
   end)
-  
+
   if not success then
     logger.err("[KoInsight] Error reading sync_on_suspend setting:", result)
     return true -- safe default
   end
-  
+
   return result
 end
 
 function koinsight:setSyncOnSuspendEnabled(enabled)
   local success, error_msg = pcall(function()
     logger.dbg("[KoInsight] Attempting to save sync_on_suspend:", enabled)
-    
+
     local settings = self.koinsight_settings.settings
     if not settings then
       logger.err("[KoInsight] No settings object available")
       return
     end
-    
+
     local current_data = settings:readSetting("koinsight", {})
     current_data.sync_on_suspend = enabled
-    
+
     -- Preserve existing server_url if it exists
     if self.koinsight_settings.server_url then
       current_data.server_url = self.koinsight_settings.server_url
     end
-    
+
     logger.dbg("[KoInsight] Saving data:", current_data)
     settings:saveSetting("koinsight", current_data)
     settings:flush()
     logger.dbg("[KoInsight] Settings saved successfully")
   end)
-  
+
   if not success then
     logger.err("[KoInsight] Error saving sync_on_suspend setting:", error_msg)
   end
@@ -229,21 +320,21 @@ function koinsight:toggleSyncOnSuspend()
   local success, error_msg = pcall(function()
     local current_state = self:getSyncOnSuspendEnabled()
     logger.dbg("[KoInsight] Current sync_on_suspend state:", current_state)
-    
+
     local new_state = not current_state
     logger.dbg("[KoInsight] Toggling to new state:", new_state)
-    
+
     self:setSyncOnSuspendEnabled(new_state)
-    
+
     local message = new_state and _("Sync on suspend enabled") or _("Sync on suspend disabled")
     UIManager:show(InfoMessage:new({
       text = message,
       timeout = 2,
     }))
-    
+
     logger.info("[KoInsight] Sync on suspend toggled from", current_state, "to", new_state)
   end)
-  
+
   if not success then
     logger.err("[KoInsight] Error in toggleSyncOnSuspend:", error_msg)
     UIManager:show(InfoMessage:new({

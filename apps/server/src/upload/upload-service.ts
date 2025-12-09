@@ -8,6 +8,7 @@ import {
 } from '@koinsight/common/types';
 import Database, { Database as DatabaseType } from 'better-sqlite3';
 import { db } from '../knex';
+import { Annotation } from '@koinsight/common/types/annotation';
 
 export class UploadService {
   private static UNKNOWN_DEVICE_ID = 'manual-upload';
@@ -106,6 +107,26 @@ export class UploadService {
         )
       );
 
+      await trx.commit();
+    });
+  }
+
+  static uploadAnnotationData(koreaderAnnotations: Annotation[]) {
+    koreaderAnnotations.map((a) => console.log(a));
+    return db.transaction(async (trx) => {
+      const bookAnnotations: Annotation[] = koreaderAnnotations.map((annotation) => ({
+        ...annotation,
+        datetime_updated: annotation.datetime_updated || '',
+        note: annotation.note || '',
+      }));
+      await Promise.all(
+        bookAnnotations.map((annotation) =>
+          trx<Annotation>('annotation')
+            .insert(annotation)
+            .onConflict(['book_md5', 'pos0', 'pos1', 'text'])
+            .merge(['note', 'datetime_updated', 'color', 'drawer'])
+        )
+      );
       await trx.commit();
     });
   }

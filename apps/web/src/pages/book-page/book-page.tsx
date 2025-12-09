@@ -10,7 +10,13 @@ import {
   Tabs,
   Text,
 } from '@mantine/core';
-import { IconCalendar, IconPhoto, IconSettings, IconTable } from '@tabler/icons-react';
+import {
+  IconCalendar,
+  IconPhoto,
+  IconSettings,
+  IconTable,
+  IconNotebook,
+} from '@tabler/icons-react';
 import { sum } from 'ramda';
 import { JSX } from 'react';
 import { useParams } from 'react-router';
@@ -21,6 +27,7 @@ import { BookPageCalendar } from './book-page-calendar';
 import { BookPageCoverSelector } from './book-page-cover-selector';
 import { BookPageManage } from './book-page-manage/book-page-manage';
 import { BookPageRaw } from './book-page-raw';
+import { BookPageAnnotation } from './book-page-annotation';
 
 export function BookPage(): JSX.Element {
   const { id } = useParams() as { id: string };
@@ -98,6 +105,9 @@ export function BookPage(): JSX.Element {
           <Tabs.Tab value="cover-selector" leftSection={<IconPhoto size={16} />}>
             Cover Selector
           </Tabs.Tab>
+          <Tabs.Tab value="annotations" leftSection={<IconNotebook size={16} />}>
+            Annotations
+          </Tabs.Tab>
           <Tabs.Tab value="manage" leftSection={<IconSettings size={16} />}>
             Manage data
           </Tabs.Tab>
@@ -120,6 +130,13 @@ export function BookPage(): JSX.Element {
             <BookPageCoverSelector book={book} />
           </Box>
         </Tabs.Panel>
+
+        <Tabs.Panel value="annotations">
+          <Box py={20}>
+            <BookPageAnnotation book={book} />
+          </Box>
+        </Tabs.Panel>
+
         <Tabs.Panel value="manage">
           <Box py={20}>
             <BookPageManage book={book} />

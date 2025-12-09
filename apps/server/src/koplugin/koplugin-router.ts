@@ -1,4 +1,5 @@
 import { KoReaderBook } from '@koinsight/common/types/book';
+import { Annotation } from '@koinsight/common/types/annotation';
 import { Device } from '@koinsight/common/types/device';
 import { PageStat } from '@koinsight/common/types/page-stat';
 import archiver from 'archiver';
@@ -45,7 +46,7 @@ router.post('/device', rejectOldPluginVersion, async (req, res) => {
   }
 });
 
-router.post('/import', rejectOldPluginVersion, async (req, res) => {
+router.post('/import/statistics', rejectOldPluginVersion, async (req, res) => {
   const contentLength = req.headers['content-length'];
   console.warn(`[${req.method}] ${req.url} — Content-Length: ${contentLength || 'unknown'} bytes`);
 
@@ -56,6 +57,19 @@ router.post('/import', rejectOldPluginVersion, async (req, res) => {
     console.debug('Importing books:', koreaderBooks);
     console.debug('Importing page stats:', newPageStats);
     await UploadService.uploadStatisticData(koreaderBooks, newPageStats);
+    res.status(200).json({ message: 'Upload successfull' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error importing data' });
+  }
+});
+
+router.post('/import/annotations', rejectOldPluginVersion, async (req, res) => {
+  const koreaderAnnotations: Annotation[] = req.body.annotations;
+
+  try {
+    console.debug('Importing annotations:', koreaderAnnotations);
+    await UploadService.uploadAnnotationData(koreaderAnnotations);
     res.status(200).json({ message: 'Upload successfull' });
   } catch (err) {
     console.error(err);
